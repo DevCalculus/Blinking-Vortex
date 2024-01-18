@@ -1,0 +1,67 @@
+a = 10; T = 1/2;
+tspan = [0 10];
+[x_init, y_init] = meshgrid(-0.1:0.004:0.1, -0.1:0.004:0.1);
+initial_positions = [x_init(:), y_init(:)]';
+
+figure;
+
+subplot(1, 2, 1);
+blinking_rk4 = scatter(x_init(:), y_init(:), 10, 'filled', 'MarkerFaceColor', [0.8, 0.2, 0.2]);
+title('Blinking Vortex (rk4)'); xlabel('X'); ylabel('Y');
+axis([-5 5 -5 5]); grid on; daspect([1,1,1]);
+
+subplot(1, 2, 2);
+blinking_rk2 = scatter(x_init(:), y_init(:), 10, 'filled', 'MarkerFaceColor', [0.2, 0.8, 0.2]);
+title('Blinking Vortex (rk2)'); xlabel('X'); ylabel('Y');
+axis([-5 5 -5 5]); grid on; daspect([1,1,1]);
+
+writerObj_rk4 = VideoWriter('blinking_vortex_rk4.mp4', 'MPEG-4');
+writerObj_rk4.FrameRate = 30;
+open(writerObj_rk4);
+
+writerObj_rk2 = VideoWriter('blinking_vortex_rk2.mp4', 'MPEG-4');
+writerObj_rk2.FrameRate = 30;
+open(writerObj_rk2);
+
+xy_rk4 = initial_positions(:);
+xy_rk2 = initial_positions(:);
+
+for t = 0:1/30:10
+    xy_rk4 = rk4(t, xy_rk4, @(t, pos) blinking_vortex(t, pos, a, T), 1/30);
+    x_rk4 = xy_rk4(1:2:end); y_rk4 = xy_rk4(2:2:end);
+    blinking_rk4.XData = x_rk4; blinking_rk4.YData = y_rk4;
+
+    xy_rk2 = rk2(t, xy_rk2, @(t, pos) blinking_vortex(t, pos, a, T), 1/30);
+    x_rk2 = xy_rk2(1:2:end); y_rk2 = xy_rk2(2:2:end);
+    blinking_rk2.XData = x_rk2; blinking_rk2.YData = y_rk2;
+
+    frame_rk4 = getframe(gcf);
+    writeVideo(writerObj_rk4, frame_rk4);
+
+    frame_rk2 = getframe(gcf);
+    writeVideo(writerObj_rk2, frame_rk2);
+end
+
+close(writerObj_rk4);
+close(writerObj_rk2);
+
+function del = blinking_vortex(t, pos, a, T)
+    x = pos(1:2:end); y = pos(2:2:end); del = zeros(size(pos));
+    xs = (mod(t, T) < T/2) .* (x + 1) + (mod(t, T) >= T/2) .* (x - 1);
+    del(1:2:end) = -a * y ./ (xs.^2 + y.^2);
+    del(2:2:end) = a * xs ./ (xs.^2 + y.^2);
+end
+
+function ynp1 = rk2(tn, yn, dydt, dt)
+    k1 = dt * dydt(tn, yn);
+    k2 = dt * dydt(tn + dt/2, yn + k1/2);
+    ynp1 = yn + k2;
+end
+
+function ynp1 = rk4(tn, yn, dydt, dt)
+    k1 = dt*dydt(tn, yn);
+    k2 = dt*dydt(tn + dt/2, yn + k1/2);
+    k3 = dt*dydt(tn + dt/2, yn + k2/2);
+    k4 = dt*dydt(tn + dt, yn + k3);
+    ynp1  = yn + (k1 + 2*k2 + 2*k3 + k4)/6;
+end
